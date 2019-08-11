@@ -75,9 +75,6 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	if *taintVar == "" && *annotationVar == "" {
-		glog.Fatalf("Must specify one of taint or annotation")
-	}
 	taint, err := processTaint()
 	if err != nil {
 		glog.Fatal(err)
@@ -136,6 +133,9 @@ func processExcludePods() (map[string]string, error) {
 }
 
 func processTaint() (*v1.Taint, error) {
+	if *taintVar == "" && *annotationVar == "" {
+		glog.Fatalf("Must specify one of taint or annotation")
+	}
 	if len(*annotationVar) != 0 && len(*taintVar) != 0 {
 		return nil, fmt.Errorf("Annotation must not be specified when taints are specified")
 	}
