@@ -37,13 +37,11 @@ type gceTerminationSource struct {
 	sync.RWMutex
 	state                          NodeTerminationState
 	updateChannel                  chan NodeTerminationState
-	regularNodeTerminationDuration time.Duration
 }
 
-func NewGCETerminationSource(regularNodeTimeout time.Duration) (NodeTerminationSource, error) {
+func NewGCETerminationSource() (NodeTerminationSource, error) {
 	ret := &gceTerminationSource{
 		updateChannel:                  make(chan NodeTerminationState),
-		regularNodeTerminationDuration: regularNodeTimeout,
 	}
 	var err error
 	// Get the Instance name

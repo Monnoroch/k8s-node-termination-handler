@@ -40,7 +40,6 @@ const eventSource = "NodeTerminationHandler"
 
 var (
 	inClusterVar        = flag.Bool("in-cluster", true, "Set to false if run outside of a k8s cluster.")
-	regularVMTimeoutVar = flag.Duration("regular-vm-timeout", time.Hour, "Termination timeout for regular VMs. Defaults to an hour which is the timeout duration of GPU VMs.")
 	excludePodsVar      = flag.String("exclude-pods", "", "List of pods to exclude from graceful eviction. Expected format is comma separated 'podName:podNamespace'.")
 	kubeconfig          *string
 	// TODO: Update this to use NoExecute taints once that graduates out of alpha.
@@ -88,7 +87,7 @@ func main() {
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: eventSource})
-	gceTerminationSource, err := termination.NewGCETerminationSource(*regularVMTimeoutVar)
+	gceTerminationSource, err := termination.NewGCETerminationSource()
 	if err != nil {
 		glog.Fatal(err)
 	}
