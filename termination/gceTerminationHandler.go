@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	onHostMaintenanceSuffix            = "instance/scheduling/on-host-maintenance"
 	terminateForMaintenance            = "TERMINATE"
 	maintenanceEventTerminate          = "TERMINATE_ON_HOST_MAINTENANCE"
 	maintenanceEventTrue               = "TRUE"
@@ -36,7 +35,6 @@ const (
 
 type gceTerminationSource struct {
 	sync.RWMutex
-	needsTerminationHandling       bool
 	state                          NodeTerminationState
 	updateChannel                  chan NodeTerminationState
 	regularNodeTerminationDuration time.Duration
@@ -48,11 +46,6 @@ func NewGCETerminationSource(regularNodeTimeout time.Duration) (NodeTerminationS
 		regularNodeTerminationDuration: regularNodeTimeout,
 	}
 	var err error
-	// Nothing to do for nodes that will not be disrupted by terminations.
-	ret.needsTerminationHandling, err = needsTerminationHandling()
-	if err != nil {
-		return nil, err
-	}
 	// Get the Instance name
 	ret.state.NodeName, err = metadata.InstanceName()
 	if err != nil {
@@ -83,22 +76,14 @@ func pendingTermination() (bool, error) {
 	return (state == maintenanceEventTerminate || pvmState == maintenanceEventTrue), nil
 }
 
-func needsTerminationHandling() (bool, error) {
-	maintenanceMode, err := metadata.Get(onHostMaintenanceSuffix)
-	if err != nil || maintenanceMode != terminateForMaintenance {
-		return false, err
-	}
-	return true, nil
-}
-
 func (g *gceTerminationSource) storePendingTermination() {
 	g.Lock()
 	defer g.Unlock()
 
 	g.state.PendingTermination = true
 	terminationTime := time.Now()
-		// This is a Preemptible node
-		g.state.TerminationTime = terminationTime.Add(preemptibleNodeTerminationDuration)
+	// This is a Preemptible node
+	g.state.TerminationTime = terminationTime.Add(preemptibleNodeTerminationDuration)
 }
 
 func (g *gceTerminationSource) resetPendingTermination() {
@@ -131,9 +116,6 @@ func (g *gceTerminationSource) handleMaintenanceEvents(state string, exists bool
 }
 
 func (g *gceTerminationSource) WatchState() <-chan NodeTerminationState {
-	if !g.needsTerminationHandling {
-		return nil
-	}
 	go wait.Forever(func() {
 		err := metadata.Subscribe(maintenanceEventSuffix, g.handleMaintenanceEvents)
 		if err != nil {
