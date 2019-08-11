@@ -35,20 +35,17 @@ const (
 
 type gceTerminationSource struct {
 	sync.RWMutex
-	state                          NodeTerminationState
-	updateChannel                  chan NodeTerminationState
+	state         NodeTerminationState
+	updateChannel chan NodeTerminationState
+	nodeName      string
 }
 
-func NewGCETerminationSource() (NodeTerminationSource, error) {
+func NewGCETerminationSource(nodeName string) (NodeTerminationSource, error) {
 	ret := &gceTerminationSource{
-		updateChannel:                  make(chan NodeTerminationState),
+		updateChannel: make(chan NodeTerminationState),
+		nodeName:      nodeName,
 	}
 	var err error
-	// Get the Instance name
-	ret.state.NodeName, err = metadata.InstanceName()
-	if err != nil {
-		return nil, err
-	}
 	// Check if a termination is already pending. This can happen if the termination watcher restarts.
 	pendingTermination, err := pendingTermination()
 	if err != nil {
@@ -117,14 +114,14 @@ func (g *gceTerminationSource) WatchState() <-chan NodeTerminationState {
 	go wait.Forever(func() {
 		err := metadata.Subscribe(maintenanceEventSuffix, g.handleMaintenanceEvents)
 		if err != nil {
-			glog.Errorf("Failed to get maintenance status for node %q - %v", g.state.NodeName, err)
+			glog.Errorf("Failed to get maintenance status for node %q - %v", g.nodeName, err)
 			return
 		}
 	}, time.Second)
 	go wait.Forever(func() {
 		err := metadata.Subscribe(preemptedEventSuffix, g.handleMaintenanceEvents)
 		if err != nil {
-			glog.Errorf("Failed to get preemptible maintenance status for node %q - %v", g.state.NodeName, err)
+			glog.Errorf("Failed to get preemptible maintenance status for node %q - %v", g.nodeName, err)
 			return
 		}
 	}, time.Second)

@@ -18,8 +18,6 @@ import "time"
 
 // NodeTerminationState represents the current status of a node in terms of terminations.
 type NodeTerminationState struct {
-	// NodeName is the hostname of the local node
-	NodeName string
 	// Set to true when a termination is impending for this node.
 	PendingTermination bool
 	// Aboslute time at which the node is expected to be terminated.

@@ -39,9 +39,9 @@ import (
 const eventSource = "NodeTerminationHandler"
 
 var (
-	inClusterVar        = flag.Bool("in-cluster", true, "Set to false if run outside of a k8s cluster.")
-	excludePodsVar      = flag.String("exclude-pods", "", "List of pods to exclude from graceful eviction. Expected format is comma separated 'podName:podNamespace'.")
-	kubeconfig          *string
+	inClusterVar   = flag.Bool("in-cluster", true, "Set to false if run outside of a k8s cluster.")
+	excludePodsVar = flag.String("exclude-pods", "", "List of pods to exclude from graceful eviction. Expected format is comma separated 'podName:podNamespace'.")
+	kubeconfig     *string
 	// TODO: Update this to use NoExecute taints once that graduates out of alpha.
 	taintVar                = flag.String("taint", "", "Taint to place on the node while handling terminations. Example: cloud.google.com/impending-node-termination::NoSchedule")
 	annotationVar           = flag.String("annotation", "", "Annotation to set on Node objects while handling terminations")
@@ -87,7 +87,7 @@ func main() {
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: client.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: eventSource})
-	gceTerminationSource, err := termination.NewGCETerminationSource()
+	gceTerminationSource, err := termination.NewGCETerminationSource(nodeName)
 	if err != nil {
 		glog.Fatal(err)
 	}
