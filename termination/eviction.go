@@ -103,6 +103,10 @@ func (p *podEvictionHandler) deletePods(pods []v1.Pod, deleteOptions *metav1.Del
 			if err := p.client.Pods(pod.Namespace).Delete(pod.Name, deleteOptions); err != nil {
 				glog.Errorf("Failed to delete pod %q in namespace %q - %v", pod.Name, pod.Namespace, err)
 			}
+		}()
+		group.Add(1)
+		go func() {
+			defer group.Done()
 			if err := p.waitForPodNotFound(pod.Name, pod.Namespace, time.Duration(*deleteOptions.GracePeriodSeconds)*time.Second); err != nil {
 				glog.Errorf("Pod %q/%q did not get deleted within grace period %d seconds: %v", pod.Namespace, pod.Name, deleteOptions.GracePeriodSeconds, err)
 			}
