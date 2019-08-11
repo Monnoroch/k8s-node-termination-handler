@@ -24,8 +24,6 @@ type NodeTerminationState struct {
 	PendingTermination bool
 	// Aboslute time at which the node is expected to be terminated.
 	TerminationTime time.Time
-	// NeedsReboot indicates if a reboot is applicable to handle the pending termination.
-	NeedsReboot bool
 }
 
 // NodeTerminationSource is an abstract repsentation of objects that tracks impending terminations for a node.

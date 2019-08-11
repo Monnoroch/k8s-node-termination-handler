@@ -66,14 +66,7 @@ func (n *nodeTerminationHandler) processNodeState() error {
 		return err
 	}
 	glog.V(4).Infof("Evicting all pods from the node")
-	if err := n.podEvictionHandler.EvictPods(n.excludePods, timeout); err != nil {
-		return err
-	}
-	if n.currentNodeState.NeedsReboot {
-		glog.V(4).Infof("Rebooting the node")
-		return n.rebootNode()
-	}
-	return nil
+	return n.podEvictionHandler.EvictPods(n.excludePods, timeout)
 }
 
 func (n *nodeTerminationHandler) rebootNode() error {

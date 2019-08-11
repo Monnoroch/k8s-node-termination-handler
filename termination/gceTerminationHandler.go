@@ -27,7 +27,6 @@ import (
 const (
 	onHostMaintenanceSuffix            = "instance/scheduling/on-host-maintenance"
 	terminateForMaintenance            = "TERMINATE"
-	isPreemptibleSuffix                = "instance/scheduling/preemptible"
 	maintenanceEventTerminate          = "TERMINATE_ON_HOST_MAINTENANCE"
 	maintenanceEventTrue               = "TRUE"
 	maintenanceEventSuffix             = "instance/maintenance-event"
@@ -56,10 +55,6 @@ func NewGCETerminationSource(regularNodeTimeout time.Duration) (NodeTerminationS
 	}
 	// Get the Instance name
 	ret.state.NodeName, err = metadata.InstanceName()
-	if err != nil {
-		return nil, err
-	}
-	ret.state.NeedsReboot, err = needsReboot()
 	if err != nil {
 		return nil, err
 	}
@@ -96,27 +91,14 @@ func needsTerminationHandling() (bool, error) {
 	return true, nil
 }
 
-func needsReboot() (bool, error) {
-	isPreemptible, err := metadata.Get(isPreemptibleSuffix)
-	if err != nil {
-		return false, err
-	}
-	// If a node is Preemptible there is no point in restarting it since it will be deleted anyways.
-	return isPreemptible != maintenanceEventTrue, nil
-}
-
 func (g *gceTerminationSource) storePendingTermination() {
 	g.Lock()
 	defer g.Unlock()
 
 	g.state.PendingTermination = true
 	terminationTime := time.Now()
-	if !g.state.NeedsReboot {
 		// This is a Preemptible node
 		g.state.TerminationTime = terminationTime.Add(preemptibleNodeTerminationDuration)
-	} else {
-		g.state.TerminationTime = terminationTime.Add(g.regularNodeTerminationDuration)
-	}
 }
 
 func (g *gceTerminationSource) resetPendingTermination() {
@@ -136,8 +118,7 @@ func (g *gceTerminationSource) handleMaintenanceEvents(state string, exists bool
 
 	// Regular GPU VMs are expected to observe `TERMINATE_ON_HOST_MAINTENANCE` on `maintenance-event` metadata variable.
 	// PVMs are expected to observe `TRUE` on `preempted` metadata variable.
-	if (g.state.NeedsReboot && state == maintenanceEventTerminate) || // Regular VM
-		(!g.state.NeedsReboot && state == maintenanceEventTrue) { // PVM
+	if state == maintenanceEventTrue {
 		glog.Infof("Recording impending termination")
 		g.storePendingTermination()
 		g.updateChannel <- g.state
