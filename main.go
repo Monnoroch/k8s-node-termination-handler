@@ -32,6 +32,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
+
+	"cloud.google.com/go/compute/metadata"
 )
 
 const eventSource = "NodeTerminationHandler"
@@ -54,6 +56,18 @@ func main() {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
 	flag.Parse()
+
+	if !metadata.OnGCE() {
+		glog.Fatalf("Not running on GCE")
+	}
+
+	nodeName, err := metadata.InstanceName()
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	checkNodePreemptible(nodeName)
+
 	client, err := getKubeClient()
 	if err != nil {
 		glog.Fatalf("Failed to get kubernetes API Server Client. Error: %v", err)
@@ -78,7 +92,6 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	nodeName := gceTerminationSource.GetState().NodeName
 	taintHandler := termination.NewNodeTaintHandler(taint, *annotationVar, nodeName, client, recorder)
 	evictionHandler := termination.NewPodEvictionHandler(nodeName, client, recorder, *systemPodGracePeriodVar)
 	terminationHandler := termination.NewNodeTerminationHandler(gceTerminationSource, taintHandler, evictionHandler, excludePods)
@@ -139,4 +152,16 @@ func processTaint() (*v1.Taint, error) {
 		Value:  parts[1],
 		Effect: v1.TaintEffect(parts[2]),
 	}, nil
+}
+
+func checkNodePreemptible(nodeName string) {
+	isPreemptibleMetadataSuffix := "instance/scheduling/preemptible"
+	isPreemptible, err := metadata.Get(isPreemptibleMetadataSuffix)
+	if err != nil {
+		glog.Fatalf("Failed to get GCP node metadata %s on node %s: %v", isPreemptibleMetadataSuffix, nodeName, err)
+	}
+
+	if isPreemptible != "TRUE" {
+		glog.Fatalf("Node %s is not preemptible", nodeName)
+	}
 }
